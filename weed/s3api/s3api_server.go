@@ -55,6 +55,18 @@ func NewS3ApiServer(router *mux.Router, option *S3ApiServerOption) (s3ApiServer 
 	v.SetDefault("jwt.filer_signing.read.expires_after_seconds", 60)
 	readExpiresAfterSec := v.GetInt("jwt.filer_signing.read.expires_after_seconds")
 
+	// CUSTOM CODE BEGIN
+
+	//signingUrlKey := v.GetString("jwt.filer_signing_url.key")
+	v.SetDefault("jwt.filer_signing_url.expires_after_seconds", 10)
+	//urlExpiresAfterSec := v.GetInt("jwt.filer_signing_url.expires_after_seconds")
+
+	//readSigningUrlKey := v.GetString("jwt.filer_signing_url.read.key")
+	v.SetDefault("jwt.filer_signing_url.read.expires_after_seconds", 60)
+	//urlReadExpiresAfterSec := v.GetInt("jwt.filer_signing_url.read.expires_after_seconds")
+
+	// CUSTOM CODE END
+
 	s3ApiServer = &S3ApiServer{
 		option:         option,
 		iam:            NewIdentityAccessManagement(option),

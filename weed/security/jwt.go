@@ -27,6 +27,18 @@ type SeaweedFilerClaims struct {
 	jwt.StandardClaims
 }
 
+// CUSTOM CODE BEGIN
+
+// SeaweedFilerUrlClaims is created by secured clients (like other microservices) and consumed by Filer server(s),
+// restricting the access this JWT allows to only a single url and method.
+type SeaweedFilerUrlClaims struct {
+	Url string `json:"url"`
+	Method string `json:"method"`
+	jwt.StandardClaims
+}
+
+// CUSTOM CODE END
+
 func GenJwtForVolumeServer(signingKey SigningKey, expiresAfterSec int, fileId string) EncodedJwt {
 	if len(signingKey) == 0 {
 		return ""
@@ -95,3 +107,30 @@ func DecodeJwt(signingKey SigningKey, tokenString EncodedJwt, claims jwt.Claims)
 		return []byte(signingKey), nil
 	})
 }
+
+// CUSTOM CODE BEGIN
+
+func GenUrlJwtForFilerServer(signingKey SigningKey, expiresAfterSec int, url string, method string) EncodedJwt {
+	if len(signingKey) == 0 {
+		return ""
+	}
+
+	claims := SeaweedFilerUrlClaims{
+		url,
+		method,
+		jwt.StandardClaims{},
+	}
+	if expiresAfterSec > 0 {
+		claims.ExpiresAt = time.Now().Add(time.Second * time.Duration(expiresAfterSec)).Unix()
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	encoded, e := t.SignedString([]byte(signingKey))
+	if e != nil {
+		glog.V(0).Infof("Failed to sign claims %+v: %v", t.Claims, e)
+		return ""
+	}
+	return EncodedJwt(encoded)
+}
+
+// CUSTOM CODE END
+

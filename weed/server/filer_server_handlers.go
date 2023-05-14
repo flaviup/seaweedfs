@@ -147,6 +147,63 @@ func (fs *FilerServer) maybeCheckJwtAuthorization(r *http.Request, isWrite bool)
 
 	var signingKey security.SigningKey
 
+	// CUSTOM CODE BEGIN
+
+	if isWrite {
+		if len(fs.filerUrlGuard.SigningKey) != 0 {
+			signingKey = fs.filerUrlGuard.SigningKey
+		}
+	} else {
+		if len(fs.filerUrlGuard.ReadSigningKey) != 0 {
+			signingKey = fs.filerUrlGuard.ReadSigningKey
+		}
+	}
+
+	if len(signingKey) != 0 {
+
+		tokenStr := security.GetJwt(r)
+		if tokenStr == "" {
+			glog.V(1).Infof("missing jwt from %s", r.RemoteAddr)
+			return false
+		}
+
+		token, err := security.DecodeJwt(signingKey, tokenStr, &security.SeaweedFilerUrlClaims{})
+
+		if err == nil && token.Valid {
+
+			if sc, ok := token.Claims.(*security.SeaweedFilerUrlClaims); ok {
+				return sc.Url == r.URL.Path && sc.Method == r.Method
+			}
+		}
+
+		if isWrite {
+			if len(fs.filerGuard.SigningKey) != 0 {
+				signingKey = fs.filerGuard.SigningKey
+			}
+		} else {
+			if len(fs.filerGuard.ReadSigningKey) != 0 {
+				signingKey = fs.filerGuard.ReadSigningKey
+			}
+		}
+
+		if len(signingKey) == 0 {
+
+			if err != nil {
+				glog.V(1).Infof("jwt verification error from %s: %v", r.RemoteAddr, err)
+				return false
+			}
+			if !token.Valid {
+				glog.V(1).Infof("jwt invalid from %s: %v", r.RemoteAddr, tokenStr)
+				return false
+			}
+
+			glog.V(1).Infof("unexpected jwt from %s: %v", r.RemoteAddr, tokenStr)
+			return false
+		}
+	}
+
+	// CUSTOM CODE END
+
 	if isWrite {
 		if len(fs.filerGuard.SigningKey) == 0 {
 			return true

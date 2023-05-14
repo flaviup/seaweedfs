@@ -81,6 +81,7 @@ type FilerServer struct {
 	secret         security.SigningKey
 	filer          *filer.Filer
 	filerGuard     *security.Guard
+	filerUrlGuard  *security.Guard // CUSTOM CODE
 	grpcDialOption grpc.DialOption
 
 	// metrics read from the master
@@ -107,6 +108,18 @@ func NewFilerServer(defaultMux, readonlyMux *http.ServeMux, option *FilerOption)
 	v.SetDefault("jwt.filer_signing.read.expires_after_seconds", 60)
 	readExpiresAfterSec := v.GetInt("jwt.filer_signing.read.expires_after_seconds")
 
+	// CUSTOM CODE BEGIN
+
+	signingUrlKey := v.GetString("jwt.filer_signing_url.key")
+	v.SetDefault("jwt.filer_signing_url.expires_after_seconds", 10)
+	urlExpiresAfterSec := v.GetInt("jwt.filer_signing_url.expires_after_seconds")
+
+	readSigningUrlKey := v.GetString("jwt.filer_signing_url.read.key")
+	v.SetDefault("jwt.filer_signing_url.read.expires_after_seconds", 60)
+	urlReadExpiresAfterSec := v.GetInt("jwt.filer_signing_url.read.expires_after_seconds")
+
+	// CUSTOM CODE END
+
 	fs = &FilerServer{
 		option:                option,
 		grpcDialOption:        security.LoadClientTLS(util.GetViper(), "grpc.filer"),
@@ -125,6 +138,7 @@ func NewFilerServer(defaultMux, readonlyMux *http.ServeMux, option *FilerOption)
 	fs.filer.Cipher = option.Cipher
 	// we do not support IP whitelist right now
 	fs.filerGuard = security.NewGuard([]string{}, signingKey, expiresAfterSec, readSigningKey, readExpiresAfterSec)
+	fs.filerUrlGuard = security.NewGuard([]string{}, signingUrlKey, urlExpiresAfterSec, readSigningUrlKey, urlReadExpiresAfterSec) // CUSTOM CODE
 
 	fs.checkWithMaster()
 
